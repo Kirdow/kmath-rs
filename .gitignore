@@ -1,0 +1,8 @@
+# files
+/kmath.exe
+/kmath
+
+
+# Added by cargo
+
+/target
