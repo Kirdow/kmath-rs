@@ -1,5 +1,76 @@
 use rug::{Rational, Complete};
 
+use lazy_static::lazy_static;
+use std::sync::Mutex;
+
+
+/*
+ * ========================================================================================
+ * Math related code
+ * ========================================================================================
+ */
+
+// Square root
+fn ksqrt_get_largest_possible(n: &Rational, p: &Rational) -> (Rational, Rational) {
+    let mut f = 0.mf();
+
+    while &f < n {
+        let lhs = (p + &f).complete() + 1.mf();
+        let rhs = &f + 1.mf();
+        if lhs * rhs > *n {
+            break;
+        }
+
+        f = f + 1.mf();
+    }
+
+    let sq = (p + &f).complete() * &f;
+
+    (f, n - sq)
+}
+
+pub fn ksqrt(mut n: Rational) -> Rational {
+    let prec = get_precision();
+
+    let mut factor = 1.mf();
+    let mut result = 0.mf();
+    let mut prepend = 0.mf();
+
+    let mut i = 0;
+    while i <= prec {
+        let (sqrt, rest) = ksqrt_get_largest_possible(&n, &prepend);
+
+        result = result + (&sqrt * &factor).complete();
+        prepend = (sqrt * 2.mf() + prepend) * 10.mf();
+
+        n = rest * 100.mf();
+        factor = factor * 0.1.mf();
+
+        i += 1;
+    }
+
+    result
+}
+
+/*
+ * ========================================================================================
+ * Helper related code
+ * ========================================================================================
+ */
+lazy_static! {
+    static ref G_PREC: Mutex<u32> = Mutex::new(3000);
+}
+
+pub fn set_precision(n: u32) {
+    let mut prec = G_PREC.lock().unwrap();
+    *prec = n;
+}
+
+pub fn get_precision() -> u32 {
+    let prec = G_PREC.lock().unwrap();
+    *prec
+}
+
 pub trait MakeFloat {
     fn mf(self) -> Rational;
 }
@@ -35,50 +106,8 @@ impl MakePrintable for Rational {
     }
 }
 
-fn ksqrt_get_largest_possible(n: &Rational, p: &Rational) -> (Rational, Rational) {
-    let mut f = 0.0.mf();
-
-    while f.clone() < *n {
-        let lhs = p + f.clone() + 1.0.mf();
-        let rhs = f.clone() + 1.0.mf();
-        if lhs * rhs > *n {
-            break;
-        }
-
-        f = f + 1.0.mf();
-    }
-
-    let sq = (p + f.clone()) * f.clone();
-
-    (f, n - sq)
-}
-
-pub fn ksqrt(mut n: Rational) -> Rational {
-    let mut factor = 1.0.mf();
-
-    let mut result: Rational = 0.0.mf();
-
-    let mut prepend: Rational = 0.0.mf();
-
-    let mut i = 0;
-    while i < 3000 {
-        let (sqrt, rest) = ksqrt_get_largest_possible(&n, &prepend);
-
-        result = result + (&sqrt * &factor).complete();
-
-        prepend = (sqrt * 2.0.mf() + prepend) * 10.0.mf();
-
-        n = rest * 100.0.mf();
-
-        factor = factor * 0.1.mf();
-
-        i += 1;
-    }
-
-    result
-}
-
 pub fn kdiv_str(n: Rational) -> String {
+    let prec = get_precision();
     let num = n.numer();
     let den = n.denom();
 
@@ -96,7 +125,7 @@ pub fn kdiv_str(n: Rational) -> String {
     s.push_str(".");
 
     let mut i = 0;
-    while i < 3000 {
+    while i <= prec {
         rem *= 10;
         let dec_digit = (&rem / den).complete();
         s.push_str(&dec_digit.to_string());

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rug = "1.16"
+lazy_static = "1.4"
 
 [lib]
 path = "src/kmath.rs"

@@ -31,34 +31,76 @@ enum InputType {
     Input(f32)
 }
 
-fn get_input() -> InputType {
-    let args: Vec<String> = env::args().collect();
+struct InputData {
+    input_type: InputType,
+    precision: Option<u32>
+}
 
-    if let Some(arg) = args.get(1) {
-        match arg.parse::<f32>() {
-            Ok(num) => InputType::Args(num),
-            Err(_) => InputType::Input(ask_for_num())
+impl InputData {
+    pub fn new() -> Self {
+        let mut input_type: Option<String> = None;
+        let mut precision: Option<u32> = None;
+
+        let mut args = env::args().skip(1);
+
+        while let Some(arg) = args.next() {
+            if arg == "--precision" || arg == "-p" {
+                if let Some(next_arg) = args.next() {
+                    if let Ok(value) = next_arg.parse::<u32>() {
+                        precision = Some(value);
+                    } else {
+                        eprintln!("Error: Expected a precision number after {}, but got {}", arg, next_arg);
+                    }
+                } else {
+                    eprintln!("Error: Expected a value after {}", arg);
+                }
+            } else if !arg.starts_with("--") {
+                input_type = Some(arg);
+            }
         }
-    } else {
-        InputType::Input(ask_for_num())
+
+        let input_type = if let Some(arg) = input_type {
+            match arg.parse::<f32>() {
+                Ok(num) => InputType::Args(num),
+                Err(_) => InputType::Input(ask_for_num())
+            }
+        } else {
+            InputType::Input(ask_for_num())
+        };
+
+        Self {
+            input_type: input_type,
+            precision: precision
+        }
+    }
+
+    pub fn get_value(&self) -> f32 {
+        self.input_type.get_value()
     }
 }
 
-fn get_input_value(it: &InputType) -> f32 {
-    match it {
-        InputType::Args(f) => *f,
-        InputType::Input(f) => *f
+impl InputType {
+    pub fn get_value(&self) -> f32 {
+        match self {
+            InputType::Args(f) => *f,
+            InputType::Input(f) => *f
+        }
     }
 }
 
 fn main() {
-    let input_type = get_input();
-    let input = get_input_value(&input_type).mf();
+    let input_data = InputData::new();
+    let input = input_data.get_value().mf();
+
+    if let Some(prec) = input_data.precision {
+        kmath::set_precision(prec);
+    }
+
     let start = Instant::now();
     let result = kmath::ksqrt(input.clone());
     let elapsed_ns = start.elapsed().as_nanos();
 
-    if let InputType::Input(_) = input_type {
+    if let InputType::Input(_) = input_data.input_type {
         println!("Calculating square root of: {}", input.mp());
         println!("Process took: {} ms", (elapsed_ns as f64) * 1e-6_f64);
         println!("Result:\n{}", result.clone().mp());
