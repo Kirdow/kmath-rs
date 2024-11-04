@@ -1,0 +1,10 @@
+[package]
+name = "kmath"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rug = "1.16"
+
+[lib]
+path = "src/kmath.rs"
